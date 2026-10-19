@@ -1,0 +1,1 @@
+# snovasys-hiring-challenge
