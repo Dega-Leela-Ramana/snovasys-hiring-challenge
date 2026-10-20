@@ -1,0 +1,109 @@
+// TrustVault database schema.
+// Permission model in one sentence: a user can reach a document only if they own it
+// or hold a DocumentPermission row for it. There is no other path (no groups, no folders).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum AccessLevel {
+  READ
+  EDIT
+}
+
+enum Outcome {
+  ALLOWED
+  DENIED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique // always stored normalised: NFKC + lowercase
+  name         String
+  passwordHash String // scrypt$N$r$p$salt$hash, see src/security/password.js
+  role         Role     @default(USER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  documents Document[]
+  grants    DocumentPermission[] @relation("grantee")
+}
+
+model Document {
+  id               String   @id @default(uuid())
+  ownerId          String
+  owner            User     @relation(fields: [ownerId], references: [id])
+  title            String
+  description      String?
+  category         String   @default("General")
+  originalFilename String // display only, never used to build a path
+  storageKey       String   @unique // random name of the file on disk
+  mimeType         String
+  sizeBytes        Int
+  sha256           String
+  version          Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  permissions DocumentPermission[]
+
+  @@index([ownerId])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model DocumentPermission {
+  id          String      @id @default(uuid())
+  documentId  String
+  document    Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation("grantee", fields: [userId], references: [id])
+  level       AccessLevel
+  grantedById String
+  createdAt   DateTime    @default(now())
+
+  @@unique([documentId, userId])
+  @@index([userId])
+}
+
+// Append-only. A database trigger (see the init migration) rejects UPDATE and DELETE.
+// No foreign keys on purpose: history must survive even if a user or document is removed.
+model AuditLog {
+  id           BigInt   @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  actorId      String?
+  actorEmail   String?
+  action       String
+  outcome      Outcome
+  documentId   String?
+  targetUserId String?
+  ip           String?
+  userAgent    String?
+  details      Json?
+  prevHash     String? // hash chain, added in Milestone 3
+  hash         String?
+
+  @@index([createdAt])
+  @@index([documentId])
+  @@index([actorId])
+}
+
+// Login sessions. Used by connect-pg-simple; the app never writes here directly.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}

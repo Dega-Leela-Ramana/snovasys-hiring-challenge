@@ -1,0 +1,16 @@
+{
+  "name": "trustvault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TrustVault: secure document sharing with a real audit trail",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "test": "npm --prefix server test",
+    "seed": "npm --prefix server run seed",
+    "build": "npm --prefix server install && npm --prefix client install --include=dev && npm --prefix client run build",
+    "start": "npm --prefix server run start:prod"
+  }
+}
