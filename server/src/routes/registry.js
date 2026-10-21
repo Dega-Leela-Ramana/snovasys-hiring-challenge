@@ -12,14 +12,18 @@
 // Per-DOCUMENT permissions (read / edit / owner) are decided inside the handlers by one
 // function, getDocumentAccess(), added in Milestone 2. This table only decides who may
 // reach the handler at all.
+import { createDocumentHandlers } from './documents.js';
 import { asyncHandler } from '../errors.js';
 import { createAuthHandlers } from './auth.js';
+import { createPermissionHandlers } from './permissions.js';
 
 const METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const ACCESS_LEVELS = new Set(['public', 'user', 'admin']);
 
 export function buildRoutes(ctx) {
   const auth = createAuthHandlers(ctx);
+const documents = createDocumentHandlers(ctx);
+  const permissions = createPermissionHandlers(ctx);
 
   return [
     {
@@ -50,7 +54,68 @@ export function buildRoutes(ctx) {
       summary: 'Log out (destroys the server-side session)',
       handler: auth.logout,
     },
-  ];
+  {
+  method: 'get',
+  path: '/documents',
+  access: 'user',
+  summary: 'List documents owned by or shared with the current user',
+  handler: documents.list,
+},
+  {
+    method: 'get',
+    path: '/documents/:id/permissions',
+    access: 'user',
+    summary: 'List document permissions (owner only)',
+    handler: permissions.list,
+  },
+  {
+    method: 'post',
+    path: '/documents/:id/permissions',
+    access: 'user',
+    summary: 'Grant or update document permission (owner only)',
+    handler: permissions.grant,
+  },
+  {
+    method: 'delete',
+    path: '/documents/:id/permissions/:userId',
+    access: 'user',
+    summary: 'Revoke document permission (owner only)',
+    handler: permissions.revoke,
+  },
+{
+  method: 'get',
+  path: '/documents/:id',
+  access: 'user',
+  summary: 'Get document metadata when the current user has read access',
+  handler: documents.get,
+},
+{
+  method: 'get',
+  path: '/documents/:id/download',
+  access: 'user',
+  summary: 'Download a document when the current user has read access',
+  handler: documents.download,
+},
+{
+  method: 'patch',
+  path: '/documents/:id',
+  access: 'user',
+  handler: documents.edit,
+},
+{
+  method: 'delete',
+  path: '/documents/:id',
+  access: 'user',
+  handler: documents.remove,
+},
+{
+  method: 'post',
+  path: '/documents',
+  access: 'user',
+  summary: 'Upload a document to private storage',
+  handler: documents.upload,
+},
+];
 }
 
 export function mountRoutes(router, routes, { requireAuth, requireAdmin, limiters }) {

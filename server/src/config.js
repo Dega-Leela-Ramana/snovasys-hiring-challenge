@@ -15,6 +15,7 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
   ALLOWED_ORIGINS: z.string().default(''),
   CLIENT_DIST_DIR: z.string().optional(),
+  STORAGE_DIR: z.string().default('./storage'),
   LOGIN_RATE_MAX: z.coerce.number().int().positive().default(10), // per IP per 15 min
   REGISTER_RATE_MAX: z.coerce.number().int().positive().default(10), // per IP per hour
   API_RATE_MAX: z.coerce.number().int().positive().default(600), // per IP per minute
@@ -54,6 +55,7 @@ export function loadConfig(env = process.env) {
     allowedOrigins: e.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
     clientDistDir:
       e.CLIENT_DIST_DIR || (isProd ? fileURLToPath(new URL('../../client/dist', import.meta.url)) : undefined),
+    storageDir: e.STORAGE_DIR,
     rate: {
       loginMax: e.LOGIN_RATE_MAX,
       registerMax: e.REGISTER_RATE_MAX,

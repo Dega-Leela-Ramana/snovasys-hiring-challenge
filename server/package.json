@@ -24,6 +24,7 @@
     "express-rate-limit": "^7.4.0",
     "express-session": "^1.18.0",
     "helmet": "^8.0.0",
+    "multer": "^2.4.0",
     "pg": "^8.12.0",
     "prisma": "^6.0.0",
     "trustvault": "file:..",
