@@ -50,8 +50,17 @@ How I used AI while building TrustVault. Entries describe actual work and verifi
 - **Related commits:** [Update project and security documentation](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/d7860be) and [Integrate private Supabase document storage](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/21b5ee6).
 - **Verification note:** The current local storage-validation changes are not yet represented by a commit link. Add their real commit hash after committing them; do not invent a link.
 
+### 2026-10-23: Tamper-evident audit hash chain
+
+- **Asked:** To review audit logging and implement a way to detect changes to recorded audit events.
+- **Produced:** A SHA-256 hash chain linking audit events, a verification service, an admin-only verification endpoint, and tests for linked events, tampering, and legacy records.
+- **Risk identified:** Hash-chain verification can detect changes to individual events and broken links, but it does not prevent a database owner from rewriting the entire chain and recalculating its hashes. The chain is not independently anchored.
+- **Did instead:** Ran the full server test suite (62 tests across 11 files) and the client production build; both passed. Confirmed that the verification endpoint denies ordinary users in the automated tests.
+- **Related commit:** [Add tamper-evident audit hash chain](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/56f54d6).
+
 ## Remaining verification
 
-- Review audit logging to confirm sensitive actions are recorded accurately and consistently.
-- Confirm that the threat model describes the actual implementation and does not imply guarantees the code does not provide.
+- Verify the audit hash chain against the deployed environment and confirm the admin-only verification endpoint works with an authorized admin session.
+- Review `THREATS.md` to ensure it accurately describes the audit chain's limitations, including the lack of an independent hash anchor.
+- Complete the final deployment smoke test, demo recording, and submission checklist.
 - Record further findings only after reproducing them, verifying the result, and linking the real commit that addresses each issue.
