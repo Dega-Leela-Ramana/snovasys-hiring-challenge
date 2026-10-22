@@ -37,6 +37,15 @@ How I used AI while building TrustVault. Entries describe actual work and verifi
 - **Wrong:** Record any actual integration issues discovered during testing here; do not invent an AI mistake.
 - **Did instead:** Built the frontend successfully and manually checked document upload, download, editing, and persistence. Related commit: [Build document management dashboard and API integration](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/8f8d538).
 
+### 2026-10-22: Private storage and security documentation
+
+- **Asked:** To integrate private production document storage and update the project README and threat model to reflect the implemented features and remaining security limitations.
+- **Produced:** Integrated Supabase Storage for production document files and updated `README.md` and `THREATS.md` to distinguish implemented controls from partial controls and planned work.
+- **Wrong:** The previous documentation still described document permissions and storage as planned. The threat model also overstated some protections, including file-content verification, audit coverage, and file-replacement behavior.
+- **Did instead:** Compared the documentation with the reviewed handlers and storage service, documented the identified gaps, and ran `npm test`. All 9 test files and 57 tests passed. The deletion test emitted a storage-cleanup `ENOENT` warning despite passing, which remains worth reviewing.
+- **Related commit:** [Update project and security documentation](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/d7860be). Storage implementation commit: [Integrate private Supabase document storage](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/21b5ee6).
+
+
 ## Next verification
 
 - Verify document access separately for owners, authorized users, and unauthorized users.
