@@ -1,5 +1,4 @@
-
- // All API requests go through this file.
+﻿// All API requests go through this file.
 export class ApiError extends Error {
   constructor(status, code, message, details) {
     super(message);
@@ -18,9 +17,7 @@ async function request(method, path, body) {
       ? { 'Content-Type': 'application/json' }
       : {},
     body: body
-      ? isFormData
-        ? body
-        : JSON.stringify(body)
+      ? isFormData ? body : JSON.stringify(body)
       : undefined,
     credentials: 'same-origin',
   });
@@ -83,7 +80,6 @@ async function downloadDocument(id) {
 }
 
 export const api = {
-  // Existing authentication
   me: () => request('GET', '/auth/me'),
   login: (email, password) =>
     request('POST', '/auth/login', { email, password }),
@@ -91,7 +87,6 @@ export const api = {
     request('POST', '/auth/register', { email, name, password }),
   logout: () => request('POST', '/auth/logout'),
 
-  // Documents
   listDocuments: () => request('GET', '/documents'),
   getDocument: (id) =>
     request('GET', `/documents/${encodeURIComponent(id)}`),
@@ -113,13 +108,13 @@ export const api = {
   deleteDocument: (id) =>
     request('DELETE', `/documents/${encodeURIComponent(id)}`),
 
-  // Sharing
+  // Sharing uses recipient email; revocation retains internal user ID.
   listPermissions: (id) =>
     request('GET', `/documents/${encodeURIComponent(id)}/permissions`),
 
-  grantPermission: (id, userId, level) =>
+  grantPermission: (id, email, level) =>
     request('POST', `/documents/${encodeURIComponent(id)}/permissions`, {
-      userId,
+      email,
       level,
     }),
 

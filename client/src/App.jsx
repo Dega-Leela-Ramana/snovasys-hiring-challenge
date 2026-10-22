@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 import AuthForm from './AuthForm.jsx';
@@ -18,7 +17,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [sharing, setSharing] = useState(null);
   const [permissions, setPermissions] = useState([]);
-  const [recipientId, setRecipientId] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
   const [level, setLevel] = useState('READ');
 
   useEffect(() => {
@@ -150,10 +149,10 @@ export default function App() {
     setBusy(true);
 
     try {
-      await api.grantPermission(sharing.id, recipientId.trim(), level);
+      await api.grantPermission(sharing.id, recipientEmail.trim(), level);
       const data = await api.listPermissions(sharing.id);
       setPermissions(data.permissions ?? []);
-      setRecipientId('');
+      setRecipientEmail('');
       setMessage('Access granted.');
       setError('');
     } catch (err) {
@@ -386,9 +385,9 @@ export default function App() {
             </div>
 
             <form onSubmit={grant} className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]">
-              <input className={field} required value={recipientId}
-                onChange={(e) => setRecipientId(e.target.value)}
-                placeholder="Recipient's user ID" />
+              <input className={field} type="email" required value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                autoComplete="email" placeholder="Recipient's email address" />
               <select className={field} value={level}
                 onChange={(e) => setLevel(e.target.value)}>
                 <option value="READ">Read access</option>
@@ -400,7 +399,7 @@ export default function App() {
             </form>
 
             <p className="mt-2 text-xs text-slate-500">
-              Enter the recipient's actual TrustVault user ID.
+              Enter the email address the recipient uses to sign in to TrustVault.
             </p>
             <h4 className="mt-5 font-semibold">Current permissions</h4>
             {permissions.length === 0 ? (

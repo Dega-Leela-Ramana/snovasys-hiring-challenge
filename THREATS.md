@@ -64,7 +64,7 @@ Two core requirements guide the design:
 | ID | Threat | Control and remaining limitation | Status |
 |---|---|---|---|
 | T-40 | Path traversal through the original filename | Files use random storage identifiers rather than client-supplied filenames as paths. The original filename is retained as metadata. | Implemented |
-| T-41 | Malicious file types or spoofed MIME types | Uploads are limited to 10 MiB and an allowlist of PDF, JPEG, PNG, and plain text MIME types. File contents are not verified using magic-byte inspection, so MIME spoofing remains possible. | Partial |
+| T-41 | Malicious file types or spoofed MIME types | Uploads are limited to 10 MiB and an allowlist of PDF, JPEG, PNG, and plain text MIME types. The backend checks basic PDF, JPEG, and PNG signatures and validates UTF-8 text, but these checks do not fully validate file structure or detect malware. | Partial |
 | T-42 | Stored XSS from uploaded HTML or SVG | HTML and SVG are not in the upload allowlist. Downloads use attachment disposition and `X-Content-Type-Options: nosniff`. | Implemented for the current allowlist |
 | T-43 | Header injection through the original filename | The filename is reduced to a basename and length-limited before being used in the download response. Continue testing unusual Unicode and control-character filenames. | Partial |
 | T-44 | Malware inside an allowed file | The application does not scan uploads for malware and does not render file contents in the application. Users must treat downloaded documents as untrusted. | Accepted |
@@ -77,7 +77,7 @@ Two core requirements guide the design:
 
 | ID | Threat | Control and remaining limitation | Status |
 |---|---|---|---|
-| T-50 | Audit rows are silently edited or deleted | A database trigger rejects UPDATE and DELETE operations on audit rows. This does not prevent every form of tampering: a sufficiently privileged database owner may alter the trigger, and row triggers do not block every bulk operation. | Partial |
+| T-50 | Audit rows are silently edited or deleted | A database trigger rejects ordinary UPDATE and DELETE operations on audit rows. A sufficiently privileged database owner may alter or disable the trigger or modify the schema. There is no cryptographic hash chain or external checkpoint. | Partial |
 | T-51 | A privileged attacker tampers with audit history | A hash chain, external checkpointing, and a verification endpoint are not implemented. | Planned |
 | T-52 | An action occurs without its audit event | Permission grants/revocations, metadata edits, and database document deletion pair the action and audit insert in a transaction. Upload audit creation occurs separately, with cleanup attempted on failure; this is not a fully atomic upload-and-audit transaction. | Partial |
 | T-53 | Denied access attempts are not recorded | Unauthorized document requests return a not-found response, but denied attempts are not consistently written as audit events. | Planned |
@@ -93,7 +93,7 @@ Two core requirements guide the design:
 |---|---|---|---|
 | T-60 | SQL injection | Normal database access uses Prisma. Review any raw SQL additions for parameterization. | Implemented for reviewed queries |
 | T-61 | Secrets are committed to Git | Local environment files should be ignored; only placeholder examples should be committed. Rotate any credential that may have been exposed. Verify tracked files and run a secret scan before submission. | Requires verification |
-| T-62 | Vulnerable dependencies | Lockfiles are committed. The most recent build reported six server dependency audit findings (one moderate, three high, two critical) and zero client findings. These findings require triage; do not assume all are exploitable or that they are harmless. | Needs review |
+| T-62 | Vulnerable dependencies | The latest full server audit reports three development/test dependency findings (one moderate and two critical) involving the Vitest test toolchain. The production-only server audit reports zero vulnerabilities, and the client audit reports zero. A compatible Vitest upgrade attempt failed with an npm dependency-resolution error; do not run a forced breaking upgrade without verifying tests and compatibility. Recheck the audit before release. | Partial; development-toolchain findings remain |
 | T-63 | Clickjacking, MIME sniffing, or missing security headers | Helmet configures security headers, including content-security and MIME-sniffing protections. Verify the deployed response headers before submission. | Implemented, deployment-dependent |
 | T-64 | Verbose errors expose internal details | The error handler is intended to return a generic response for unexpected failures. Keep detailed diagnostics out of client responses. | Implemented for reviewed handler |
 | T-65 | Oversized request bodies exhaust resources | JSON input is limited to 100 KB; multipart uploads and fields have configured limits. | Implemented |
@@ -112,7 +112,7 @@ Two core requirements guide the design:
 - No file-replacement endpoint or retained version history.
 - No trash or recovery workflow.
 - No MFA, email verification, or password reset.
-- No malware scanning or file-content magic-byte verification.
+- No malware scanning or complete file-format validation; file-signature checks are basic and can be spoofed.
 - Stored SHA-256 hashes are not checked during download.
 - Denied access attempts are not consistently audited.
 - No implemented audit hash chain or external audit checkpoint.

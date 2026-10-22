@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "TrustVault: secure document sharing with a real audit trail",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "install:all": "npm --prefix server install && npm --prefix client install",
     "dev:server": "npm --prefix server run dev",

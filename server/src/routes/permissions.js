@@ -1,5 +1,4 @@
-
-import { HttpError } from '../errors.js';
+﻿import { HttpError } from '../errors.js';
 import { getDocumentAccess } from '../services/documentAccess.js';
 
 export function createPermissionHandlers(ctx) {
@@ -43,27 +42,36 @@ export function createPermissionHandlers(ctx) {
         throw new HttpError(404, 'Document not found', 'NOT_FOUND');
       }
 
-      const { userId, level } = req.body ?? {};
+      const rawEmail = req.body?.email;
+      const level = req.body?.level;
 
       if (
-        typeof userId !== 'string' ||
-        !userId ||
+        typeof rawEmail !== 'string' ||
+        !rawEmail.trim() ||
+        rawEmail.trim().length > 254 ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail.trim()) ||
         !['READ', 'EDIT'].includes(level)
       ) {
         throw new HttpError(
           400,
-          'Provide a valid userId and access level READ or EDIT',
+          'Provide a valid recipient email and access level READ or EDIT',
           'VALIDATION_ERROR',
         );
       }
 
+      const email = rawEmail.trim().toLowerCase();
+
       const target = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { email },
         select: { id: true, isActive: true },
       });
 
       if (!target || !target.isActive) {
-        throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
+        throw new HttpError(
+          404,
+          'No active TrustVault account was found for that email',
+          'USER_NOT_FOUND',
+        );
       }
 
       if (target.id === req.user.id) {
@@ -79,12 +87,12 @@ export function createPermissionHandlers(ctx) {
           where: {
             documentId_userId: {
               documentId: req.params.id,
-              userId,
+              userId: target.id,
             },
           },
           create: {
             documentId: req.params.id,
-            userId,
+            userId: target.id,
             level,
             grantedById: req.user.id,
           },
@@ -108,7 +116,7 @@ export function createPermissionHandlers(ctx) {
             action: 'PERMISSION_GRANT',
             outcome: 'ALLOWED',
             documentId: req.params.id,
-            targetUserId: userId,
+            targetUserId: target.id,
             ip: req.ip,
             userAgent: req.get('user-agent') || null,
             details: { level },

@@ -1,4 +1,4 @@
-﻿import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   baseTestConfig,
   makeContext,
@@ -60,7 +60,7 @@ describe('Document permission API', () => {
   it('allows the owner to grant READ access and records an audit event', async () => {
     const response = await ownerAgent
       .post(`/api/documents/${document.id}/permissions`)
-      .send({ userId: reader.id, level: 'READ' });
+      .send({ email: reader.email, level: 'READ' });
 
     expect(response.status).toBe(200);
 
@@ -91,7 +91,7 @@ describe('Document permission API', () => {
   it('allows the owner to grant EDIT access', async () => {
     const response = await ownerAgent
       .post(`/api/documents/${document.id}/permissions`)
-      .send({ userId: editor.id, level: 'EDIT' });
+      .send({ email: editor.email, level: 'EDIT' });
 
     expect(response.status).toBe(200);
 
@@ -189,7 +189,7 @@ describe('Document permission API', () => {
 
     const response = await request(t.app)
       .post(`/api/documents/${document.id}/permissions`)
-      .send({ userId: reader.id, level: 'READ' });
+      .send({ email: reader.email, level: 'READ' });
 
     expect(response.status).toBe(401);
   });
