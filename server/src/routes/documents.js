@@ -1,7 +1,6 @@
 
 import multer from 'multer';
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
 import { HttpError } from '../errors.js';
 import {
   getDocumentAccess,
@@ -11,6 +10,7 @@ import {
 import {
   validateUpload,
   storeDocument,
+  readStoredDocument,
   deleteStoredDocument,
 } from '../services/documentStorage.js';
 
@@ -129,17 +129,17 @@ export function createDocumentHandlers(ctx) {
         throw new HttpError(404, 'Document not found', 'NOT_FOUND');
       }
 
-      const filePath = path.join(config.storageDir, document.storageKey);
+      let fileContents;
 
       try {
-        await readFile(filePath);
+        fileContents = await readStoredDocument(
+          document.storageKey,
+          config.storageDir,
+          config,
+        );
       } catch (error) {
         if (error.code === 'ENOENT') {
-          throw new HttpError(
-            404,
-            'Stored document not found',
-            'NOT_FOUND',
-          );
+          throw new HttpError(404, 'Stored document not found', 'NOT_FOUND');
         }
         throw error;
       }
@@ -158,7 +158,8 @@ export function createDocumentHandlers(ctx) {
 
       res.set('X-Content-Type-Options', 'nosniff');
       res.type(document.mimeType);
-      return res.download(filePath, document.originalFilename);
+      res.attachment(document.originalFilename);
+      return res.send(fileContents);
     },
 
     edit: async (req, res) => {
@@ -297,13 +298,15 @@ export function createDocumentHandlers(ctx) {
         });
       });
 
-      // Clean up the private file after the database operation succeeds.
+      // Remove the private file only after the database operation succeeds.
       try {
-        await deleteStoredDocument(document.storageKey, config.storageDir);
+        await deleteStoredDocument(
+          document.storageKey,
+          config.storageDir,
+          config,
+        );
       } catch (error) {
-        if (error.code !== 'ENOENT') {
-          console.error('Document storage cleanup failed:', error);
-        }
+        console.error('Document storage cleanup failed:', error);
       }
 
       res.status(204).end();
@@ -366,6 +369,8 @@ export function createDocumentHandlers(ctx) {
       const stored = await storeDocument(
         req.file.buffer,
         config.storageDir,
+        config,
+        req.file.mimetype,
       );
 
       let document;
@@ -408,6 +413,7 @@ export function createDocumentHandlers(ctx) {
         await deleteStoredDocument(
           stored.storageKey,
           config.storageDir,
+          config,
         ).catch(() => {});
 
         throw error;
