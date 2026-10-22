@@ -1,4 +1,5 @@
 
+import { appendAudit } from '../services/auditLog.js';
 import multer from 'multer';
 import path from 'node:path';
 import { HttpError } from '../errors.js';
@@ -144,8 +145,8 @@ export function createDocumentHandlers(ctx) {
         throw error;
       }
 
-      await prisma.auditLog.create({
-        data: {
+      await prisma.$transaction((tx) =>
+        appendAudit(tx, {
           actorId: req.user.id,
           actorEmail: req.user.email,
           action: 'DOCUMENT_DOWNLOAD',
@@ -153,8 +154,8 @@ export function createDocumentHandlers(ctx) {
           documentId: document.id,
           ip: req.ip,
           userAgent: req.get('user-agent') || null,
-        },
-      });
+        }),
+      );
 
       res.set('X-Content-Type-Options', 'nosniff');
       res.type(document.mimeType);
@@ -237,17 +238,15 @@ export function createDocumentHandlers(ctx) {
           select: publicDocumentFields,
         });
 
-        await tx.auditLog.create({
-          data: {
-            actorId: userId,
-            actorEmail: req.user.email,
-            action: 'DOCUMENT_EDIT',
-            outcome: 'ALLOWED',
-            documentId: updated.id,
-            ip: req.ip,
-            userAgent: req.get('user-agent'),
-            details: { fields: Object.keys(data) },
-          },
+        await appendAudit(tx, {
+          actorId: userId,
+          actorEmail: req.user.email,
+          action: 'DOCUMENT_EDIT',
+          outcome: 'ALLOWED',
+          documentId: updated.id,
+          ip: req.ip,
+          userAgent: req.get('user-agent') || null,
+          details: { fields: Object.keys(data) },
         });
 
         return updated;
@@ -284,17 +283,15 @@ export function createDocumentHandlers(ctx) {
           where: { id: document.id },
         });
 
-        await tx.auditLog.create({
-          data: {
-            actorId: userId,
-            actorEmail: req.user.email,
-            action: 'DOCUMENT_DELETE',
-            outcome: 'ALLOWED',
-            documentId: document.id,
-            ip: req.ip,
-            userAgent: req.get('user-agent'),
-            details: {},
-          },
+        await appendAudit(tx, {
+          actorId: userId,
+          actorEmail: req.user.email,
+          action: 'DOCUMENT_DELETE',
+          outcome: 'ALLOWED',
+          documentId: document.id,
+          ip: req.ip,
+          userAgent: req.get('user-agent') || null,
+          details: {},
         });
       });
 
@@ -376,40 +373,36 @@ export function createDocumentHandlers(ctx) {
       let document;
 
       try {
-        document = await prisma.document.create({
-          data: {
-            ownerId: req.user.id,
-            title,
-            description: description || null,
-            category,
-            originalFilename,
-            storageKey: stored.storageKey,
-            mimeType: req.file.mimetype,
-            sizeBytes: stored.sizeBytes,
-            sha256: stored.sha256,
-          },
-          select: publicDocumentFields,
-        });
+        document = await prisma.$transaction(async (tx) => {
+          const created = await tx.document.create({
+            data: {
+              ownerId: req.user.id,
+              title,
+              description: description || null,
+              category,
+              originalFilename,
+              storageKey: stored.storageKey,
+              mimeType: req.file.mimetype,
+              sizeBytes: stored.sizeBytes,
+              sha256: stored.sha256,
+            },
+            select: publicDocumentFields,
+          });
 
-        await prisma.auditLog.create({
-          data: {
+          await appendAudit(tx, {
             actorId: req.user.id,
             actorEmail: req.user.email,
             action: 'DOCUMENT_UPLOAD',
             outcome: 'ALLOWED',
-            documentId: document.id,
+            documentId: created.id,
             ip: req.ip,
             userAgent: req.get('user-agent') || null,
             details: { filename: originalFilename },
-          },
+          });
+
+          return created;
         });
       } catch (error) {
-        if (document) {
-          await prisma.document
-            .delete({ where: { id: document.id } })
-            .catch(() => {});
-        }
-
         await deleteStoredDocument(
           stored.storageKey,
           config.storageDir,

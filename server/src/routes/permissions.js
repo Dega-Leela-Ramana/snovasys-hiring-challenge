@@ -1,4 +1,6 @@
-﻿import { HttpError } from '../errors.js';
+﻿
+import { appendAudit } from '../services/auditLog.js';
+import { HttpError } from '../errors.js';
 import { getDocumentAccess } from '../services/documentAccess.js';
 
 export function createPermissionHandlers(ctx) {
@@ -109,18 +111,16 @@ export function createPermissionHandlers(ctx) {
           },
         });
 
-        await tx.auditLog.create({
-          data: {
-            actorId: req.user.id,
-            actorEmail: req.user.email,
-            action: 'PERMISSION_GRANT',
-            outcome: 'ALLOWED',
-            documentId: req.params.id,
-            targetUserId: target.id,
-            ip: req.ip,
-            userAgent: req.get('user-agent') || null,
-            details: { level },
-          },
+        await appendAudit(tx, {
+          actorId: req.user.id,
+          actorEmail: req.user.email,
+          action: 'PERMISSION_GRANT',
+          outcome: 'ALLOWED',
+          documentId: req.params.id,
+          targetUserId: target.id,
+          ip: req.ip,
+          userAgent: req.get('user-agent') || null,
+          details: { level },
         });
 
         return saved;
@@ -178,18 +178,16 @@ export function createPermissionHandlers(ctx) {
           },
         });
 
-        await tx.auditLog.create({
-          data: {
-            actorId: req.user.id,
-            actorEmail: req.user.email,
-            action: 'PERMISSION_REVOKE',
-            outcome: 'ALLOWED',
-            documentId: req.params.id,
-            targetUserId: userId,
-            ip: req.ip,
-            userAgent: req.get('user-agent') || null,
-            details: { previousLevel: existing.level },
-          },
+        await appendAudit(tx, {
+          actorId: req.user.id,
+          actorEmail: req.user.email,
+          action: 'PERMISSION_REVOKE',
+          outcome: 'ALLOWED',
+          documentId: req.params.id,
+          targetUserId: userId,
+          ip: req.ip,
+          userAgent: req.get('user-agent') || null,
+          details: { previousLevel: existing.level },
         });
       });
 
