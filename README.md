@@ -92,7 +92,7 @@ The audit hash chain can help detect changes to recorded events and broken links
 
 ### Requirements
 
-- Node.js 20 or later.
+- Node.js 22 or later.
 - PostgreSQL 14 or later.
 - npm.
 
