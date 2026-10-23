@@ -20,7 +20,9 @@ describe('Document edit and delete API', () => {
   let document;
 
   beforeEach(async () => {
-    storageDir = await mkdtemp(path.join(tmpdir(), 'trustvault-edit-delete-'));
+    storageDir = await mkdtemp(
+      path.join(tmpdir(), 'trustvault-edit-delete-'),
+    );
     t = makeContext(baseTestConfig({ STORAGE_DIR: storageDir }));
     await resetDb(t.db);
 
@@ -47,13 +49,16 @@ describe('Document edit and delete API', () => {
 
   afterAll(async () => {
     if (t) await t.close();
-    if (storageDir) await rm(storageDir, { recursive: true, force: true });
+    if (storageDir) {
+      await rm(storageDir, { recursive: true, force: true });
+    }
   });
 
   it('allows the owner to edit document metadata and records an audit event', async () => {
     const response = await ownerAgent
       .patch(`/api/documents/${document.id}`)
       .send({ title: 'Updated title' });
+
     expect(response.status).toBe(200);
     expect(response.body.document.title).toBe('Updated title');
 
@@ -64,6 +69,7 @@ describe('Document edit and delete API', () => {
         outcome: 'ALLOWED',
       },
     });
+
     expect(audit).not.toBeNull();
   });
 
@@ -83,17 +89,43 @@ describe('Document edit and delete API', () => {
     const unchanged = await t.db.prisma.document.findUnique({
       where: { id: document.id },
     });
+
     expect(unchanged.title).toBe('Original title');
   });
 
+  it('denies another user access to document details and download', async () => {
+    const other = await createUser(t, {
+      email: 'reader@example.com',
+      name: 'Unauthorized Reader',
+    });
+    const otherAgent = await loginAgent(t, other.email);
+
+    const readResponse = await otherAgent.get(
+      `/api/documents/${document.id}`,
+    );
+
+    expect(readResponse.status).toBe(404);
+    expect(readResponse.body.error.code).toBe('NOT_FOUND');
+
+    const downloadResponse = await otherAgent.get(
+      `/api/documents/${document.id}/download`,
+    );
+
+    expect(downloadResponse.status).toBe(404);
+    expect(downloadResponse.body.error.code).toBe('NOT_FOUND');
+  });
+
   it('allows the owner to delete a document and records an audit event', async () => {
-    const response = await ownerAgent.delete(`/api/documents/${document.id}`);
+    const response = await ownerAgent.delete(
+      `/api/documents/${document.id}`,
+    );
 
     expect(response.status).toBe(204);
 
     const deleted = await t.db.prisma.document.findUnique({
       where: { id: document.id },
     });
+
     expect(deleted).toBeNull();
 
     const audit = await t.db.prisma.auditLog.findFirst({
@@ -103,6 +135,7 @@ describe('Document edit and delete API', () => {
         outcome: 'ALLOWED',
       },
     });
+
     expect(audit).not.toBeNull();
   });
 
@@ -113,18 +146,23 @@ describe('Document edit and delete API', () => {
     });
     const otherAgent = await loginAgent(t, other.email);
 
-    const response = await otherAgent.delete(`/api/documents/${document.id}`);
+    const response = await otherAgent.delete(
+      `/api/documents/${document.id}`,
+    );
 
     expect(response.status).toBe(404);
 
     const stillExists = await t.db.prisma.document.findUnique({
       where: { id: document.id },
     });
+
     expect(stillExists).not.toBeNull();
   });
 
   it('rejects unauthenticated edits', async () => {
-    const response = await (await import('supertest')).default(t.app)
+    const request = (await import('supertest')).default;
+
+    const response = await request(t.app)
       .patch(`/api/documents/${document.id}`)
       .send({ title: 'Unauthenticated change' });
 

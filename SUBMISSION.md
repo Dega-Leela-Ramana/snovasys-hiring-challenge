@@ -1,16 +1,16 @@
-\# TrustVault — Project Submission
+# TrustVault â€” Project Submission
 
 
 
-\*\*Author:\*\* Dega Leela Ramana  
+**Author:** Dega Leela Ramana
 
-\*\*Challenge:\*\* Snovasys Fresher Hiring Challenge 2026  
+**Challenge:** Snovasys Fresher Hiring Challenge 2026
 
-\*\*Live Application:\*\* https://trustvault-app-fczr.onrender.com/
+**Live Application:** https://trustvault-app-fczr.onrender.com/
 
 
 
-\## 1. What I Built
+## 1. What I Built
 
 
 
@@ -24,23 +24,23 @@ The application uses React and Vite for the frontend, Express.js for the backend
 
 Key features include:
 
-\- User authentication and role-based access control.
+- User authentication and role-based access control.
 
-\- Document upload, listing, downloading, updating, and deletion.
+- Document upload, listing, downloading, updating, and deletion.
 
-\- Document sharing with read and edit permissions.
+- Document sharing with read and edit permissions.
 
-\- Owner-controlled permission management and revocation.
+- Owner-controlled permission management and revocation.
 
-\- Backend authorization checks for protected operations.
+- Backend authorization checks for protected operations.
 
-\- A tamper-evident audit hash chain with an administrator verification endpoint.
+- A tamper-evident audit hash chain with an administrator verification endpoint.
 
-\- Automated tests and project documentation.
+- Automated tests and project documentation.
 
 
 
-\## 2. What I Deliberately Did Not Build
+## 2. What I Deliberately Did Not Build
 
 
 
@@ -56,7 +56,7 @@ The audit verification endpoint also does not verify every historical entry, so 
 
 
 
-\## 3. Permission Model
+## 3. Permission Model
 
 
 
@@ -64,15 +64,15 @@ TrustVault uses authentication and server-side authorization to control access t
 
 
 
-\- \*\*Authenticated users:\*\* Can access protected application functionality according to their permissions.
+- **Authenticated users:** Can access protected application functionality according to their permissions.
 
-\- \*\*Document owners:\*\* Can manage their documents and control sharing permissions.
+- **Document owners:** Can manage their documents and control sharing permissions.
 
-\- \*\*Users with read permission:\*\* Can access and download shared documents but cannot modify or delete them solely on the basis of read access.
+- **Users with read permission:** Can access and download shared documents but cannot modify or delete them solely on the basis of read access.
 
-\- \*\*Users with edit permission:\*\* Can perform permitted document-editing operations.
+- **Users with edit permission:** Can perform permitted document-editing operations.
 
-\- \*\*Administrators:\*\* Can access administrator-only functionality, including audit-chain verification.
+- **Administrators:** Can access administrator-only functionality, including audit-chain verification.
 
 
 
@@ -84,7 +84,7 @@ During production testing, the audit verification endpoint returned `FORBIDDEN` 
 
 
 
-\## 4. How I Used AI
+## 4. How I Used AI
 
 
 
@@ -104,7 +104,7 @@ The `PROMPTS.md` file documents my AI-assisted development process, including mi
 
 
 
-\## 5. Testing and Verification
+## 5. Testing and Verification
 
 
 
@@ -112,15 +112,15 @@ The project has automated tests covering application behavior and security-relat
 
 
 
-\- \*\*Automated tests:\*\* 62 tests passed across 11 test files.
+- **Automated tests:** 62 tests passed across 11 test files.
 
-\- \*\*Frontend production build:\*\* Passed.
+- **Frontend production build:** Passed.
 
-\- \*\*Production login:\*\* Tested with demo accounts.
+- **Production login:** Tested with demo accounts.
 
-\- \*\*Administrator authorization:\*\* Verified that a normal user was denied access to the audit verification endpoint.
+- **Administrator authorization:** Verified that a normal user was denied access to the audit verification endpoint.
 
-\- \*\*Audit verification:\*\* The latest observed result reported `valid: true`, `checked: 9`, `total: 17`, and `legacyCount: 8`.
+- **Audit verification:** The latest observed result reported `valid: true`, `checked: 9`, `total: 17`, and `legacyCount: 8`.
 
 
 
@@ -128,39 +128,38 @@ The audit result means that nine entries were checked and eight were classified 
 
 
 
-\## 6. Remaining Limitations and Work
+## 6. Remaining Limitations and Work
 
 
 
-\- Eight legacy audit entries were excluded from the verified count in the latest observed result.
+- Eight legacy audit entries were excluded from the verified count in the latest observed result.
 
-\- Audit-chain integrity is not independently anchored outside the database.
+- Audit-chain integrity is not independently anchored outside the database.
 
-\- The final review of cross-user authorization tests and clean-clone database setup must be completed before submission.
-
-
-
-\## 7. Project Links
+- The final review of cross-user authorization tests and clean-clone database setup must be completed before submission.
 
 
 
-\- \*\*Live Application:\*\* https://trustvault-app-fczr.onrender.com/
-
-\- \*\*GitHub Repository:\*\* https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge
-
-\- \*\*Deployment Guide:\*\* `DEPLOY.md`
-
-\- \*\*API Documentation:\*\* `API.md`
-
-\- \*\*Threat Model:\*\* `THREATS.md`
-
-\- \*\*AI Usage Diary:\*\* `PROMPTS.md`
+## 7. Project Links
 
 
 
-\## 8. Demonstration Video
+- **Live Application:** https://trustvault-app-fczr.onrender.com/
+
+- **GitHub Repository:** https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge
+
+- **Deployment Guide:** `DEPLOY.md`
+
+- **API Documentation:** `API.md`
+
+- **Threat Model:** `THREATS.md`
+
+- **AI Usage Diary:** `PROMPTS.md`
 
 
 
-\*\*Demo Video:\*\* \[Watch the TrustVault demonstration](https://drive.google.com/file/d/1hiVzOLa\_uof7-c1pEeK9d7Y4Ny6FQbmJ/view?usp=sharing)
+## 8. Demonstration Video
 
+
+
+**Demo Video:** [Watch the TrustVault demonstration](https://drive.google.com/file/d/1hiVzOLa_uof7-c1pEeK9d7Y4Ny6FQbmJ/view?usp=sharing)
