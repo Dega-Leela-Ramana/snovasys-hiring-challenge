@@ -1,116 +1,231 @@
-# TrustVault API
+﻿# TrustVault API Documentation
 
-Base path: `/api`. All bodies are JSON. The test suite fails if a route exists in
-`server/src/routes/registry.js` but is missing from the table below.
+## Overview
 
-## Who may call what
+TrustVault provides secure document storage, sharing, and audit verification.
 
-|Endpoint|Who may call it|What it does|
-|-|-|-|
-|`GET /api/health`|Anyone|Liveness and database check. Returns `{ "status": "ok" }`.|
-|`POST /api/auth/register`|Anyone (rate-limited: 10 per IP per hour)|Creates a `USER` account and logs in. Body: `email`, `name`, `password` (12 to 128 chars). Any other field, including `role`, is rejected with 400.|
-|`POST /api/auth/login`|Anyone (rate-limited: 10 per IP per 15 min)|Body: `email`, `password`. Returns the user and sets the session cookie. A new session id is issued on every login.|
-|`GET /api/auth/me`|Any logged-in, active user|Returns `{ user: { id, email, name, role } }`. The role is read from the database on every request.|
-|`POST /api/auth/logout`|Any logged-in, active user|Destroys the server-side session. Returns 204.|
-|`GET /api/documents/:id/permissions`|Logged-in document owner|Lists permissions granted for the document.|
-|`POST /api/documents/:id/permissions`|Logged-in document owner|Grants or updates a recipient's READ or EDIT permission. JSON body: `userId`, `level`.|
-|`DELETE /api/documents/:id/permissions/:userId`|Logged-in document owner|Revokes the recipient's permission. Returns 204.|
+- **Base path:** `/api`
+- **Authentication:** Session cookie
+- **Content type:** JSON unless an endpoint requires multipart form data
+- **Production URL:** https://trustvault-app-fczr.onrender.com/
 
-Anything under `/api` that is not listed as "Anyone" requires a session. Anonymous
-callers get `401` for every other path, including paths that do not exist.
+## Authentication and Security
 
-## Conventions
+- Registration and login are public endpoints protected by rate limits.
+- All other implemented endpoints require an authenticated session.
+- The audit verification endpoint additionally requires administrator access.
+- State-changing requests that include an `Origin` header must use the application's own origin or an origin allowed by `ALLOWED_ORIGINS`.
+- The session cookie is named `tv.sid`, is HTTP-only, uses `SameSite=Lax`, is secure in production, and has an eight-hour lifetime.
+- Document access is checked by the server. Knowing a document ID does not grant permission.
+- Unauthorized or inaccessible document resources may return `404 NOT_FOUND` to avoid disclosing their existence.
 
-* **Authentication:** an HTTP-only session cookie named `tv.sid` (`SameSite=Lax`, `Secure` in production, 8 hour lifetime). There are no API keys or bearer tokens.
-* **Errors** always look like `{ "error": { "code": "â€¦", "message": "â€¦", "details": \[...] } }`. `details` appears only for validation errors.
-* **State-changing requests** (`POST`, `PUT`, `PATCH`, `DELETE`) that carry an `Origin` header must come from the site's own origin or an origin listed in `ALLOWED\_ORIGINS`; otherwise `403 BAD\_ORIGIN`.
-* **Status codes:** `400` bad input, `401` not logged in, `403` logged in but not allowed (admin routes, or READ-only on an edit), `404` not found **or not permitted** (documents, from Milestone 2), `409` conflict, `413` body too large, `429` rate limited.
+## Implemented Endpoints
 
-|Code|Meaning|
-|-|-|
-|`UNAUTHENTICATED`|No valid session|
-|`INVALID\_CREDENTIALS`|Wrong email, wrong password, or deactivated account (deliberately not distinguished)|
-|`VALIDATION\_ERROR`|Body failed validation|
-|`EMAIL\_TAKEN`|Email already registered|
-|`BAD\_ORIGIN`|State-changing request from a foreign origin|
-|`RATE\_LIMITED`|Too many requests|
-|`FORBIDDEN`|Logged in, but the role is not allowed|
+### Health
 
-## Planned (not implemented yet; not part of Milestone 1)
+#### `GET /api/health`
 
-Milestone 2: `POST /api/documents`, `GET /api/documents`, `GET /api/documents/:id`,
-`GET /api/documents/:id/download`, `PATCH /api/documents/:id`, `PUT /api/documents/:id/file`,
-`DELETE /api/documents/:id`, `GET|PUT|DELETE /api/documents/:id/permissionsâ€¦`,
-`GET /api/users/lookup`.
-Milestone 3: `GET /api/admin/audit`, `GET /api/admin/audit/verify`.
-Each will be added to the table above, with its authorization rule, in the same commit that adds the route.
+Checks application/database health.
 
+- Authentication: Public
+- Success: `200 OK`
 
+Example response:
 
-\### List Documents
+```json
+{
+  "status": "ok"
+}
+```
 
+### Authentication
 
+#### `POST /api/auth/register`
 
-\- \*\*Method:\*\* GET
+Creates a user account and establishes a session.
 
-\- \*\*Endpoint:\*\* `/api/documents`
+- Authentication: Public
+- Rate limited
+- Required fields: `email`, `name`, `password`
+- Password length: 12â€“128 characters
+- The requested role cannot be supplied to assign privileges.
 
-\- \*\*Authentication:\*\* Required
+#### `POST /api/auth/login`
 
-\- \*\*Description:\*\* Lists documents owned by the logged-in user or shared with them.
+Authenticates an existing user and establishes a session.
 
+- Authentication: Public
+- Rate limited
 
+#### `GET /api/auth/me`
 
-\### Get Document Details
+Returns information about the currently authenticated user.
 
+- Authentication: Required
 
+#### `POST /api/auth/logout`
 
-\- \*\*Method:\*\* GET
+Logs out the current user and ends the session.
 
-\- \*\*Endpoint:\*\* `/api/documents/:id`
+- Authentication: Required
 
-\- \*\*Authentication:\*\* Required
+### Documents
 
-\- \*\*Description:\*\* Returns document details if the logged-in user owns the document or has READ or EDIT permission. Returns 404 if the document is unavailable or the user does not have access.
+#### `GET /api/documents`
 
+Lists documents owned by the authenticated user or shared with them.
 
+- Authentication: Required
 
-\### Upload Document
+#### `POST /api/documents`
 
+Uploads a document owned by the authenticated user.
 
+- Authentication: Required
+- Content type: `multipart/form-data`
+- File field: `file`
+- Required text field: `title`
+- Optional text fields: `description`, `category`
+- Maximum file size: 10 MB
+- Supported declared file types: PDF, JPEG, PNG, and plain text
 
-\- \*\*Method:\*\* POST
+Files are stored privately. The application calculates a SHA-256 checksum for uploaded content.
 
-\- \*\*Endpoint:\*\* `/api/documents`
+#### `GET /api/documents/:id`
 
-\- \*\*Authentication:\*\* Required
+Returns document details when the authenticated user has read access.
 
-\- \*\*Content-Type:\*\* `multipart/form-data`
+- Authentication: Required
+- Access: Owner or a user with `READ` or `EDIT` permission
 
-\- \*\*File field:\*\* `file`
+#### `GET /api/documents/:id/download`
 
-\- \*\*Other fields:\*\* `title` (required), `description` (optional), `category` (optional)
+Downloads the document when the authenticated user has read access.
 
-\- \*\*File size limit:\*\* 10 MB
+- Authentication: Required
+- Access: Owner or a user with `READ` or `EDIT` permission
+- Successful downloads are recorded in the audit trail.
 
-\- \*\*Supported declared file types:\*\* PDF, JPEG, PNG, and plain text
+#### `PATCH /api/documents/:id`
 
-\- \*\*Description:\*\* Uploads a document to private server storage and records its metadata and SHA-256 checksum.
+Updates document metadata.
 
+- Authentication: Required
+- Access: Owner or a user with `EDIT` permission
+- Successful edits are recorded in the audit trail.
 
+#### `DELETE /api/documents/:id`
 
-\### Download Document
+Deletes a document.
 
+- Authentication: Required
+- Access: Owner only
+- Successful deletions are recorded in the audit trail.
 
+### Document Permissions
 
-\- \*\*Method:\*\* GET
+#### `GET /api/documents/:id/permissions`
 
-\- \*\*Endpoint:\*\* `/api/documents/:id/download`
+Lists sharing permissions for a document.
 
-\- \*\*Authentication:\*\* Required
+- Authentication: Required
+- Access: Owner only
 
-\- \*\*Description:\*\* Downloads the original file for a document.
+#### `POST /api/documents/:id/permissions`
 
-\- \*\*Access control:\*\* The user must own the document or have `READ` or `EDIT` permission. Returns `404 Not Found` if the document does not exist or the user lacks access.
+Grants a user access to a document.
 
-\- \*\*Audit:\*\* Records successful download attempts.
+- Authentication: Required
+- Access: Owner only
+- Required JSON fields: `email`, `level`
+- `email`: Email address of an existing active user
+- `level`: `READ` or `EDIT`
+- The owner cannot grant a separate permission to themselves.
+
+Example request:
+
+```json
+{
+  "email": "viewer@example.com",
+  "level": "READ"
+}
+```
+
+Use the email address of an actual existing account in your environment.
+
+#### `DELETE /api/documents/:id/permissions/:userId`
+
+Revokes a user's permission to access a document.
+
+- Authentication: Required
+- Access: Owner only
+- `userId`: ID of the user whose permission should be revoked
+- Successful response: `204 No Content`
+
+### Audit Verification
+
+#### `GET /api/admin/audit/verify`
+
+Verifies the integrity and linkage of the audit chain.
+
+- Authentication: Administrator only
+- Returns `200 OK` when verification succeeds.
+- Returns `409 Conflict` when verification detects an invalid audit chain.
+
+This endpoint verifies the stored chain; it does not make the database owner incapable of rewriting the entire chain. Independent, external anchoring would be needed to protect against that threat.
+
+## Document Access Rules
+
+| Action | Owner | READ permission | EDIT permission |
+|---|---|---|---|
+| View document details | Yes | Yes | Yes |
+| Download document | Yes | Yes | Yes |
+| Edit document metadata | Yes | No | Yes |
+| Delete document | Yes | No | No |
+| Manage sharing permissions | Yes | No | No |
+
+Permission levels apply to documents, not to user account roles. Administrator access to audit verification is a separate authorization check.
+
+## Common HTTP Status Codes
+
+The exact status depends on the endpoint and failure condition.
+
+| Status | Meaning |
+|---|---|
+| `200 OK` | Request succeeded |
+| `201 Created` | Resource created, where returned by the endpoint |
+| `204 No Content` | Request succeeded without a response body |
+| `400 Bad Request` | Invalid request data |
+| `401 Unauthorized` | Authentication required or invalid session |
+| `403 Forbidden` | Request blocked, including a disallowed origin |
+| `404 Not Found` | Resource missing or inaccessible |
+| `409 Conflict` | Conflict or failed audit-chain verification |
+| `413 Payload Too Large` | Upload exceeds the configured size limit |
+| `429 Too Many Requests` | Rate limit exceeded |
+| `500 Internal Server Error` | Unexpected server error |
+
+## Error Responses
+
+Errors are returned as JSON. The exact error code and message depend on the failure.
+
+Example:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Resource not found"
+  }
+}
+```
+
+Clients should use the HTTP status and error code to handle failures rather than relying on the wording of the message.
+
+## Notes
+
+- All paths above are relative to the `/api` base path.
+- `access: user` means a valid authenticated session is required; it does not automatically grant access to every document.
+- Resource-level permissions are enforced by the relevant route handlers.
+- The audit verification endpoint is implemented. A general `GET /api/admin/audit` listing endpoint is not included in the current route registry.
+- This document describes implemented endpoints only; it does not list planned routes as if they were available.
+'@ | Set-Content -LiteralPath .\API.md -Encoding utf8
