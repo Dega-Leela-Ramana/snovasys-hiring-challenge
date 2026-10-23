@@ -1,71 +1,109 @@
 # Deploying TrustVault
 
-Goal for Day 1: a live URL with HTTPS where you can register, log in and log out.
-The app is **one process**: Express serves the API under `/api` and the built React app
-for every other URL, so there is a single origin and no CORS.
+This guide describes the deployed TrustVault architecture and how to configure a new environment from a clean clone.
 
-> These steps were written without access to a hosting account, so they are unverified.
-> The first real deploy will teach you something; record it in `PROMPTS.md` if the AI was wrong.
+## Production deployment
 
-## What the host must give you
+- **Application:** https://trustvault-app-fczr.onrender.com/
+- **Hosting:** Render
+- **Database:** Supabase PostgreSQL
+- **File storage:** Private Supabase Storage bucket
+- **Runtime:** Node.js 22 or later
+- **Application architecture:** Express serves the API under `/api` and the built React frontend from the same origin.
 
-1. A **PostgreSQL** database and its connection string.
-2. **HTTPS** (every common host does this for you).
-3. Somewhere to set **environment variables**.
-4. *(From Milestone 2)* a **persistent disk/volume** for uploaded files. Many free tiers wipe the
-   disk on every deploy, which would delete documents. Choose a host with a volume
-   (Fly.io and Railway offer them) before Milestone 2.
+The free hosting instance may take time to wake after inactivity.
 
-## Environment variables
+## Requirements
 
-| Variable | Value | Notes |
-|---|---|---|
-| `NODE_ENV` | `production` | Turns on Secure cookies and the strict password cost. |
-| `DATABASE_URL` | from your Postgres host | Keep `?sslmode=require` if the host needs TLS. |
-| `SESSION_SECRET` | 48+ random characters | `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`. Generate a **new** one for production; never reuse the dev one. |
-| `TRUST_PROXY` | `1` on Render / Railway / Fly | Number of proxies in front of the app. **If login "succeeds" but you are immediately logged out, this is wrong.** Do not set it higher than the real number: clients could then fake their IP and dodge rate limits. |
-| `PORT` | usually set by the host | |
+- Node.js 22 or later
+- npm
+- A PostgreSQL database
+- A Render service or another compatible Node.js host
+- A private Supabase Storage bucket and server-side credentials when using Supabase storage
 
-Never put these values in a file in the repository.
+## Production configuration
 
-## Option A: Docker (works on Railway, Render, Fly.io)
+Configure environment variables in the hosting provider's dashboard. Do not commit production values to Git.
 
-1. Push the repo to GitHub and create a new service from it. The host finds the `Dockerfile`.
-2. Add a PostgreSQL database and set the variables above.
-3. Deploy. The container runs `prisma migrate deploy` (creates the tables) and then starts the server.
-4. Open `https://<your-app>/api/health`. Expect `{"status":"ok"}`.
+| Variable | Purpose |
+|---|---|
+| `NODE_ENV` | Set to `production`. |
+| `DATABASE_URL` | PostgreSQL connection string for the application. |
+| `SESSION_SECRET` | Strong, unique production session secret. |
+| `TRUST_PROXY` | Configure according to the actual trusted proxy setup of the host. |
+| `PORT` | Set by Render or the hosting environment when applicable. |
+| SUPABASE_URL | Supabase project URL. Required in production. |
+| SUPABASE_SECRET_KEY | Server-side Supabase secret key. Required in production; never expose it in the browser. |
+| Storage bucket | The application currently uses the hardcoded private bucket name 	trustvault-documents. |
+| Seed variables | Only set when intentionally running the seed script against the intended database. |
 
-## Option B: Node build and start commands
+Use the application's environment configuration and `server/.env.example` to confirm exact variable names. Never copy production credentials into `.env.example`, documentation, logs, or source control.
 
-- Build command: `npm run build`
-- Start command: `npm start` (runs migrations, then the server)
-- Node version 20 or newer.
+## Render build and start
 
-## Create the demo accounts (once)
+For the current root-level package scripts, use:
 
-Run this where the app's environment variables are available (most hosts have a "shell" or
-"run command" feature), with passwords **you** choose:
+- **Build command:** `npm run build`
+- **Start command:** `npm start`
 
-```
-SEED_ADMIN_EMAIL=admin@trustvault.example \
-SEED_ADMIN_PASSWORD=<12+ characters> \
-SEED_DEMO_PASSWORD=<12+ characters> \
+The build script installs the server and client dependencies and builds the frontend. The production start script runs the configured database migrations and starts the server.
+
+After deployment, check:
+
+`https://trustvault-app-fczr.onrender.com/api/health`
+
+Expect a successful JSON response indicating that the application and database are healthy.
+
+## Database setup and migrations
+
+For a new environment:
+
+1. Create a PostgreSQL database.
+2. Configure `DATABASE_URL` for that database.
+3. Install dependencies with `npm run install:all`.
+4. Apply the committed migrations using the project's migration workflow.
+5. Deploy the application and check `/api/health`.
+
+Production deployments use Prisma migrations. Do not edit an already-applied migration; create a new migration for schema changes.
+
+Use a separate, disposable test database for automated tests. Never point tests at production data.
+
+## Private file storage
+
+Production documents must remain in a private Supabase Storage bucket. Downloads should go through the authenticated backend, which checks document permissions before returning file content.
+
+Do not make the bucket public or expose a Supabase service-role key to the browser. Configure SUPABASE_URL and SUPABASE_SECRET_KEY in the hosting provider's environment settings. The configured Supabase project must contain a private Storage bucket named 	trustvault-documents, matching the name in server/src/config.js.
+
+## Seed demo accounts
+
+The seed script supports the demo accounts used by the challenge:
+
+- `admin@trustvault.example`
+- `owner@trustvault.example`
+- `viewer@trustvault.example`
+- `stranger@trustvault.example`
+
+Set `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and `SEED_DEMO_PASSWORD` only in the intended environment, then run:
+
+```bash
 npm run seed
 ```
 
-This creates `admin@trustvault.example` (ADMIN) and `owner@`, `viewer@`, `stranger@trustvault.example`
-(USER). Re-running is safe: existing accounts are left alone. Passwords are never printed.
-Put the demo credentials in the README **only for this demo database**.
+The seed script leaves existing accounts unchanged by default. `SEED_RESET_PASSWORDS=true` resets passwords for accounts included in the seed operation. Use it only when deliberately resetting the intended database.
 
-## After deploying: five-minute check
+The challenge requires demo credentials in the README. Use demo-only passwords and ensure the accounts contain no real personal information or production data.
 
-1. `/api/health` returns ok.
-2. Register, refresh the page: still logged in. Log out: back to the form.
-3. Browser dev tools, Application, Cookies: `tv.sid` is **HttpOnly** and **Secure**.
-4. `curl -i https://<your-app>/api/auth/me` returns **401**.
-5. Log in as a second user in a private window to confirm sessions are separate.
+## Post-deployment verification
 
-## Rolling back
+1. Open the live application and verify that the login page loads.
+2. Check `/api/health`.
+3. Log in with each demo account and verify the expected role or sharing scenario.
+4. Verify that users cannot access documents they do not own or have permission to read.
+5. Confirm that `READ` recipients cannot edit metadata or delete documents.
+6. Confirm that `EDIT` recipients can edit metadata but cannot delete documents or manage sharing.
+7. Confirm that only an administrator can access `/api/admin/audit/verify`.
+8. Run the automated tests against the separate test database before releasing changes.
 
-Redeploy the previous commit. Migrations only add tables in Milestone 1; do not edit an applied
-migration. Make a new one.
+## Rollback
+
+If a deployment fails, inspect the Render deployment logs and redeploy a known-good commit when appropriate. Review database migration compatibility before rolling back application code. Do not assume a database schema change can safely be reversed by redeploying an older application version.
