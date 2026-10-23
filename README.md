@@ -1,80 +1,132 @@
 # TrustVault
 
-Secure document sharing where the wrong person cannot read a file, and access decisions can be checked and audited.
+**Secure document sharing with server-side authorization and auditable access decisions.**
 
-Built individually for the Snovasys Fresher Hiring Challenge 2026.
+TrustVault is a secure document management application built individually for the **Snovasys Fresher Hiring Challenge 2026**. It allows users to upload documents, manage their files, share documents with specific users, and control access through `READ` and `EDIT` permissions.
 
-**Current status:** Core document management, authentication, permissions, and private document storage are implemented. Automated tests cover the application; see the test suite and `THREATS.md` for the verified security controls and remaining limitations.
+**Developer:** Dega Leela Ramana
 
-## Technology stack
+## Live Demo
+
+**Application:** https://trustvault-app-fczr.onrender.com/
+
+The application is deployed using Render and Supabase. The free hosting instance may take some time to wake up after inactivity.
+
+### Demo Accounts
+
+The following accounts have been created in the production database and their logins have been verified.
+
+| Role / Purpose | Email |
+|---|---|
+| Administrator | `admin@trustvault.example` |
+| Document owner | `owner@trustvault.example` |
+| Read-only recipient | `viewer@trustvault.example` |
+| Independent user | `stranger@trustvault.example` |
+
+**Demo password instructions:**
+
+- Administrator: `AdministratoR`
+- Owner, viewer, and stranger: `UserdemopasS`
+
+## Features
+
+- User registration, login, and logout with server-side sessions.
+- Document upload, metadata viewing, editing, and deletion.
+- Per-document `READ` and `EDIT` permissions.
+- Owner-controlled sharing, permission updates, and revocation.
+- Server-side authorization for document access and downloads.
+- Private Supabase Storage in production and local storage in development.
+- Upload size and allowed MIME-type validation.
+- Audit events for implemented document and permission actions.
+- Role-based administrative middleware.
+- Request rate limiting and security headers.
+- Automated tests for authentication, permissions, and document access.
+
+## Technology Stack
 
 | Area | Technology |
 |---|---|
 | Frontend | React, Vite, Tailwind CSS |
 | Backend | Node.js, Express |
-| Database | PostgreSQL, Prisma |
-| Authentication | PostgreSQL-backed server-side sessions; scrypt password hashing |
-| File storage | Private Supabase Storage in production; local storage in development |
+| Database | PostgreSQL |
+| ORM and migrations | Prisma |
+| Authentication | Server-side sessions, scrypt password hashing |
+| File storage | Supabase Storage in production |
 | Testing | Vitest, Supertest, PostgreSQL test database |
+| Deployment | Render and Supabase |
 
-## Project documentation
+## Roles and Permission Model
 
-- [`API.md`](API.md) — API endpoints and access requirements
-- [`THREATS.md`](THREATS.md) — security threats, implemented controls, and accepted risks
-- [`PROMPTS.md`](PROMPTS.md) — AI usage diary and implementation decisions
-- [`AI_CONTEXT.md`](AI_CONTEXT.md) — project context and AI-related notes
-- [`DEPLOY.md`](DEPLOY.md) — deployment configuration and instructions
+| Role / Permission | Capabilities |
+|---|---|
+| Owner | Read, edit, delete their document, and manage its sharing permissions |
+| `READ` recipient | Read and download a shared document |
+| `EDIT` recipient | Read and download a shared document and edit its metadata |
+| Administrator | Access designated administrative functionality; does not automatically gain access to document contents |
 
-## Features
+Authorization is enforced on the server, not only by hiding frontend controls. Permission changes are read from the database on subsequent requests. Unauthorized document access returns `404` where implemented to avoid revealing whether a document exists.
 
-- User registration, login, logout, and server-side sessions
-- Document upload, metadata viewing, editing, and deletion
-- Per-document `READ` and `EDIT` permissions
-- Owner-only permission granting, updating, and revocation
-- Authorization checks on document access and download requests
-- Private file storage with random storage identifiers
-- Upload size and allowed MIME-type checks
-- Audit events for implemented document and permission actions
-- Role-based administrative middleware
-- Request rate limiting and security headers
+## Security and Auditability
 
-## Roles and permission model
+TrustVault includes:
 
-- **Owner:** owns the uploaded document; can read, edit, delete, and manage its permissions.
-- **READ:** can read and download a shared document.
-- **EDIT:** can read and download a shared document and edit its metadata.
-- **Administrator:** has a global administrative role, but does not automatically gain access to document contents.
+- Server-side document authorization.
+- Password hashing and server-side session management.
+- Private document storage with random storage identifiers.
+- Input and upload validation.
+- Audit events and a SHA-256 hash chain linking audit records.
+- An administrator-only audit-chain verification endpoint.
+- Automated tests for permission enforcement and access restrictions.
 
-Document access is checked on the server. Permission changes are read from the database on subsequent requests. Unauthorized document access returns a `404` response to avoid revealing whether a document exists.
+The audit hash chain can help detect changes to recorded events and broken links. It is not an externally anchored immutable log: an attacker with sufficient database privileges may be able to rewrite the chain. See `THREATS.md` for the threat model, controls, and accepted risks.
 
-File replacement, version history, and a user-facing administrative audit-log interface are not currently exposed by the routes inspected.
+## Project Documentation
 
-## Run locally
+- [`API.md`](API.md) — API endpoints and access requirements.
+- [`THREATS.md`](THREATS.md) — security threats, implemented controls, and accepted risks.
+- [`PROMPTS.md`](PROMPTS.md) — AI usage diary and implementation decisions.
+- [`AI_CONTEXT.md`](AI_CONTEXT.md) — project context and AI-related notes.
+- [`DEPLOY.md`](DEPLOY.md) — deployment configuration and instructions.
 
-Requirements: Node.js 20+ and PostgreSQL 14+.
+## Run Locally
 
-If Docker is available, create a development database and a separate test database:
+### Requirements
+
+- Node.js 20 or later.
+- PostgreSQL 14 or later.
+- npm.
+
+### 1. Configure the database
+
+Create a development database and a separate test database. If Docker is installed, you can use:
 
 ```bash
-docker run --name trustvault-db -e POSTGRES_PASSWORD=devpassword -p 5432:5432 -d postgres:16
+docker run --name trustvault-db \
+  -e POSTGRES_PASSWORD=devpassword \
+  -p 5432:5432 -d postgres:16
+
 docker exec trustvault-db createdb -U postgres trustvault
 docker exec trustvault-db createdb -U postgres trustvault_test
 ```
 
-Configure `server/.env` using `server/.env.example`. Set the database connection strings and a strong session secret as described in the example file.
+Use a separate, disposable test database. Do not use real production data for testing.
 
-Install dependencies and prepare the database:
+### 2. Configure environment variables
+
+Create `server/.env` based on `server/.env.example`.
+
+Configure the required database connection strings, a strong session secret, and any other required environment variables. Follow `DEPLOY.md` for environment-specific configuration.
+
+### 3. Install dependencies and run migrations
+
+From the repository root:
 
 ```bash
 npm run install:all
 npm --prefix server run db:migrate:dev
 ```
 
-Optionally seed demo accounts using the `SEED_*` variables documented in the server configuration:
-
-```bash
-npm run seed
-```
+### 4. Start the application
 
 Start the backend in one terminal:
 
@@ -88,42 +140,62 @@ Start the frontend in another terminal:
 npm run dev:client
 ```
 
-Open `http://localhost:5173`.
+Open:
 
-## Run tests
+http://localhost:5173/
 
-From the project root:
+### 5. Seed demo accounts (optional)
+
+Configure the required `SEED_*` environment variables as documented in `server/scripts/seed.js` and run:
+
+```bash
+npm --prefix server run seed
+```
+
+The seed script creates demo accounts and leaves existing accounts unchanged by default. Setting `SEED_RESET_PASSWORDS=true` overwrites passwords for accounts included in the seed operation. Use this option carefully and only against the intended database.
+
+## Run Tests
+
+From the repository root:
 
 ```bash
 npm test
 ```
 
-**Important:** The test database name must contain `test`. The tests modify and clear test data, and are designed to reject unsafe database targets. Never point the test configuration at a database containing real data.
+The test database name must contain `test`. The test suite modifies and clears test data and is designed to reject unsafe database targets. Never point test configuration at a database containing real data.
 
-## Scope and limitations
+## Scope and Limitations
 
-The current scope does not include folders, group sharing, public share links, external sharing, version history, trash and recovery, MFA, or password reset.
+The current scope does not include folders, group sharing, public share links, external sharing, version history, trash and recovery, multi-factor authentication, or password reset.
 
-Security controls and known limitations—including audit-log tampering boundaries, file validation, and storage cleanup—are documented in [`THREATS.md`](THREATS.md).
+A user-facing administrative audit-log interface is not currently exposed. See `THREATS.md` for further limitations, including audit-log tampering boundaries, file validation, and storage cleanup.
 
-## Project layout
+## Project Structure
 
 ```text
-client/                  React frontend
-server/src/
-  app.js                 Express application and middleware
-  server.js              Server startup
-  config.js              Environment configuration and validation
-  routes/registry.js     Central API route table
-  routes/auth.js         Authentication handlers
-  routes/documents.js    Document handlers
-  routes/permissions.js  Permission management handlers
-  middleware/            Authentication, origin and error checks
-  security/password.js   Password hashing
-  services/documentAccess.js   Document authorization
-  services/documentStorage.js  File storage and validation
-  services/sessions.js   Session helpers
-server/prisma/           Database schema and migrations
-server/scripts/seed.js   Demo account creation
-server/tests/            Automated tests
+client/                       React frontend
+server/
+  src/
+    app.js                    Express application and middleware
+    server.js                 Server startup
+    config.js                 Environment configuration
+    routes/
+      registry.js              Central API route table
+      auth.js                  Authentication handlers
+      documents.js             Document handlers
+      permissions.js           Permission management
+    middleware/                Authentication and security checks
+    security/password.js       Password hashing
+    services/
+      documentAccess.js        Document authorization
+      documentStorage.js       File storage and validation
+      sessions.js              Session helpers
+      auditLog.js              Audit logging
+  prisma/                      Database schema and migrations
+  scripts/seed.js              Demo account creation
+  tests/                       Automated tests
 ```
+
+## Individual Project
+
+TrustVault was designed, implemented, and tested individually by **Dega Leela Ramana** for the Snovasys Fresher Hiring Challenge 2026.
