@@ -5,7 +5,7 @@ How I used AI while building TrustVault. Entries describe actual work and verifi
 ## Reusable context
 
 - [AI_CONTEXT.md](AI_CONTEXT.md): Security invariants and review checklist used when working with the AI assistant.
-- Standing instruction: “Do not generate the whole application at once. Show the plan, wait for approval, then build one milestone.”
+- Standing instruction: "Do not generate the whole application at once. Show the plan, wait for approval, then build one milestone."
 
 ## Entries
 
@@ -48,7 +48,7 @@ How I used AI while building TrustVault. Entries describe actual work and verifi
 - **Wrong:** Earlier documentation did not accurately distinguish implemented controls from partial protections and planned work. File-type checks based on the declared MIME type alone were also insufficient to establish that uploaded bytes matched the claimed type.
 - **Did instead:** Added checks for PDF, JPEG, and PNG file signatures, UTF-8 validity for text files, null bytes, and consistency between the reported file size and the actual buffer. Ran the test suite and production build; both passed. These signature checks are basic validation, not complete file-format verification. The deletion test had previously emitted a storage-cleanup `ENOENT` warning despite passing, which warranted review.
 - **Related commits:** [Update project and security documentation](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/d7860be) and [Integrate private Supabase document storage](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/21b5ee6).
-- **Verification note:** The current local storage-validation changes are not yet represented by a commit link. Add their real commit hash after committing them; do not invent a link.
+- **Verification note:** The storage-validation changes are included in [Add email-based document sharing and security updates](https://github.com/Dega-Leela-Ramana/snovasys-hiring-challenge/commit/3eb86a05fe13a8a572319f3c71141143c662f272). The signature checks are basic validation, not complete file-format verification.
 
 ### 2026-10-23: Tamper-evident audit hash chain
 
